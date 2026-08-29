@@ -11,6 +11,7 @@ from .services.routing import RoutingError, get_route
 
 @api_view(['GET'])
 def health_check(request):
+    """Simple endpoint the frontend calls to confirm it can reach the API."""
     return Response({'status': 'ok', 'service': 'eld-trip-planner-backend'})
 
 

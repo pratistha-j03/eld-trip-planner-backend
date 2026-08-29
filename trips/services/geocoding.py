@@ -11,6 +11,7 @@ class GeocodingError(Exception):
 
 
 def geocode(location_name):
+
     try:
         response = requests.get(
             NOMINATIM_URL,

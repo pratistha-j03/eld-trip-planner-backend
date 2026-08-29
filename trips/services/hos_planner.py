@@ -1,5 +1,4 @@
 
-
 from dataclasses import dataclass, field
 
 MILES_PER_METER = 1 / 1609.34
