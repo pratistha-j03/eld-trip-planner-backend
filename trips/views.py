@@ -11,7 +11,6 @@ from .services.routing import RoutingError, get_route
 
 @api_view(['GET'])
 def health_check(request):
-    """Simple endpoint the frontend calls to confirm it can reach the API."""
     return Response({'status': 'ok', 'service': 'eld-trip-planner-backend'})
 
 
@@ -49,6 +48,14 @@ def build_trip_plan(trip):
     ]
     plan = plan_trip(legs, float(trip.current_cycle_used_hours))
 
+    is_estimated = bool(route.get('estimated'))
+    if is_estimated:
+        plan.assumptions.insert(
+            0,
+            'The live routing service was unreachable, so the route, distance, and stop '
+            'placements below are a straight-line estimate rather than real turn-by-turn directions.',
+        )
+
     return {
         'trip': TripSerializer(trip).data,
         'waypoints': [
@@ -60,6 +67,7 @@ def build_trip_plan(trip):
             'distance_miles': round(route['distance_miles'], 1),
             'duration_hours': round(route['duration_hours'], 2),
             'geometry': route['geometry'],
+            'estimated': is_estimated,
         },
         'stops': plan.stops,
         'daily_logs': plan.daily_logs,

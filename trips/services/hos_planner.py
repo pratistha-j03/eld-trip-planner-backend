@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass, field
 
 MILES_PER_METER = 1 / 1609.34
@@ -92,6 +91,10 @@ def plan_trip(legs, current_cycle_used_hours):
     ]
 
     daily_logs = _split_into_days(events, total_miles)
+
+    remarks_by_day = _build_remarks(events)
+    for day in daily_logs:
+        day['remarks'] = remarks_by_day.get(day['day'], [])
 
     plan = TripPlan(
         events=events,
@@ -188,6 +191,39 @@ def _drive_leg(leg, avg_speed, state, events):
         else:
             events.append(_advance(state, DUTY_OFF, BREAK_DURATION_HOURS, '30-minute break'))
             state.drive_since_break = 0.0
+
+
+def _format_clock(hour_in_day):
+    """hour_in_day: 0-24 float, hours since midnight -> '6:30 AM' style string."""
+    hour_in_day = hour_in_day % DAY_HOURS
+    total_minutes = int(round(hour_in_day * 60))
+    h, m = divmod(total_minutes, 60)
+    h = h % 24
+    period = 'AM' if h < 12 else 'PM'
+    h12 = h % 12 or 12
+    return f'{h12}:{m:02d} {period}'
+
+
+def _build_remarks(events):
+    """One remark per duty-status change, grouped by the day it started on.
+
+    Real RODS logs require noting the city/state (or highway + milepost)
+    at each duty-status change. This app doesn't reverse-geocode points
+    along the route, so the mile marker is used as the location stand-in
+    (the same "highway + milepost" style the regulations allow when a
+    change happens somewhere other than a named place)."""
+    remarks_by_day = {}
+    for e in events:
+        day = int(e.start // DAY_HOURS) + 1
+        hour_in_day = e.start - (day - 1) * DAY_HOURS
+        remarks_by_day.setdefault(day, []).append({
+            'time': _format_clock(hour_in_day),
+            'status': e.status,
+            'status_label': DUTY_LABELS[e.status],
+            'note': e.label,
+            'mile_marker': round(e.miles_marker, 1),
+        })
+    return remarks_by_day
 
 
 def _split_into_days(events, total_miles):
